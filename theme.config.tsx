@@ -55,6 +55,7 @@ const config: DocsThemeConfig = {
   chat: {
     link: 'https://discord.gg/Gu6DBKEqw4',
   },
+  docsRepositoryBase: 'https://github.com/mod-haven/mod-haven.github.io/blob/main',
   footer: {
     text: 'ModHaven',
   },
