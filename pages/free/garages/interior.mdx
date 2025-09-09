@@ -1,0 +1,55 @@
+All the interiors are defined in a file using key-value pairs. The key represents the name of the interior, and the value is a table containing the options for that interior. Later, the key from that table will be used in the garage to determine which interior the garage will use.
+
+- Interior options: `table`
+    - interiorId: `number`
+        - Id of interior, you can use native GetInteriorAtCoords or CodeWalker to find it
+    - ipl?: `string`
+        - Optional, some interiors doesn't have it
+    - insideSpawn: `vector4`
+        - Location where player will be spawned inside interior
+    - customizationMenu?: `vector3`
+        - Optional, if your interior doesn't have options to customize, you dont put this
+    - Vehicles: `table`
+        - The Vehicles table consists of numbered sub-tables, where each number represents a specific floor. Inside each floor, there are multiple sets of coordinates (vector4) where vehicles will spawn
+        ```lua
+        Vehicles = {
+            [1] = { -- This represents floor 1
+                vec4(0, 0, 0, 0),
+                vec4(0, 0, 0, 0),
+            },
+            [2] = { -- This represents floor 2
+                vec4(0, 0, 0, 0),
+            }
+        }
+        ```
+    - Customization: `table`
+        - The `Default` table defines the initial settings that are applied when a **garage is purchased**
+        - Each number (`[1]`, `[2]`, etc.) represents a floor (similar to the `Vehicles` table)
+        - Each entry inside a floor is a **configuration setting.**
+        - Each setting must have:
+            - `name: string`- A name of entity set.
+            - `type: string` - Specifies the category of the setting (e.g., tint, blinds), naming doesn't matter.
+            - `color: number`- (Optional) - Only included if applicable.
+            ```lua
+            Default = {
+                [1] = {
+                    { name = 'entity_set_shell_01', type = 'interior' },
+                    { name = 'entity_set_shell_02' }, -- static, wont change
+                    { name = 'entity_set_shell_03', type = 'tint', color = 1 },
+                }
+            },
+            ```
+    - Purchasable: `table`
+        - Each item belongs to a category, and the category name (key) will be displayed as a **title in the menu.**
+        - Every item in the table must contain:
+            - `label` - The name of the item that will be shown in the menu.
+            - `name` - The internal name (entity set) used by the script to apply changes.
+            - `price` - The cost of the item.
+            - `type` - The type of the item (e.g., `interior`, `tint`, etc.).
+            - `color` - (optional) - A numerical value representing the item's color (if applicable)
+    - DeactivateInterior?: `function`
+        - Function that will unload interior
+    - LoadDefaults?: `function`
+        - Function that will load interior for preview, make sure that `Default` table have same logic as this because when you purchase garage it will set data from `Default` table
+
+You can check some predefined interiors in [config/interior.lua](https://github.com/mod-haven/mh_garage/blob/main/config/interior.lua)

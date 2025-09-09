@@ -1,0 +1,1318 @@
+---
+title: Accessible code
+---
+
+<details>
+<summary>inventory.lua</summary>
+```lua
+Inv = {}
+
+local oxinv = GetResourceState('ox_inventory'):find('start')
+local qsinv = GetResourceState('qs-inventory'):find('start')
+local qbinv = GetResourceState('qb-inventory'):find('start')
+local psinv = GetResourceState('ps-inventory'):find('start')
+local ljinv = GetResourceState('lj-inventory'):find('start')
+local core  = GetResourceState('core_inventory'):find('start')
+local codem = GetResourceState('codem-inventory'):find('start')
+local ak = GetResourceState('ak47_inventory'):find('start')
+
+if oxinv then
+    Inv = { ox = true, exp = exports.ox_inventory }
+elseif qsinv then
+    Inv = { qs = true, exp = exports['qs-inventory'] }
+elseif qbinv or psinv or ljinv then
+    Inv = { qb = true }
+elseif core then
+    Inv = { core = true }
+elseif codem then
+    Inv = { codem = true }
+elseif ak then
+    Inv = { ak = true, exp = exports['ak47_inventory'] }
+end
+
+SetTimeout(1000, function()
+    if table.type(Inv) == 'empty' then
+        warn("No inventory resource was found, check mh_gang/inventory.lua")
+        warn("No inventory resource was found, check mh_gang/inventory.lua")
+        warn("No inventory resource was found, check mh_gang/inventory.lua")
+    end
+end)
+```
+</details>
+
+<details>
+<summary>bridge/esx/client.lua</summary>
+```lua
+if not IsESX() then return end
+
+local ESX = exports[Config.FrameworkName]:getSharedObject()
+
+RegisterNetEvent(Config.Events.esx.client.loaded)
+AddEventHandler(Config.Events.esx.client.loaded, function(xPlayer)
+	PlayerData = xPlayer
+	PlayerLoaded = true
+    if Config.SetGangAs == 'metadata' then TriggerServerEvent('mh_gang:GetPlayerGang') end
+    Wait(500)
+	SetUpMafia()
+end)
+
+RegisterNetEvent(Config.Events.esx.client.setjob)
+AddEventHandler(Config.Events.esx.client.setjob, function(job)
+	PlayerData.job = job
+    OnGangUpdate()
+    lib.hideTextUI()
+end)
+
+if Config.SetGangAs == 'job2' then
+    RegisterNetEvent('esx:setJob2')
+    AddEventHandler('esx:setJob2', function(job)
+        PlayerData.job2 = job
+        OnGangUpdate()
+        lib.hideTextUI()
+    end)
+end
+
+RegisterNetEvent(Config.Events.esx.client.logout, function()
+    table.wipe(PlayerData)
+    PlayerLoaded = false
+end)
+
+function IsBoss()
+    if Config.SetGangAs == 'job' then
+        return PlayerData.job.grade_name == 'boss'
+    elseif Config.SetGangAs == 'job2' then
+        return PlayerData.job2.grade_name == 'boss'
+    elseif Config.SetGangAs == 'metadata' then
+        return PlayerData.gang?.name == 'boss'
+    end
+end
+
+RegisterNetEvent('mh_gang:setPlayerData', function(data)
+    PlayerData.gang = data
+    OnGangUpdate()
+    lib.hideTextUI()
+end)
+
+function GetGang()
+    if PlayerLoaded then
+        if Config.SetGangAs == 'job' then
+            return PlayerData.job.name
+        elseif Config.SetGangAs == 'job2' then
+            return PlayerData.job2.name
+        elseif Config.SetGangAs == 'metadata' then
+            return PlayerData.gang?.job_name
+        end
+    else
+        return ''
+    end
+end
+
+exports('GetGang', function()
+    while not PlayerLoaded do Wait(50) end
+    
+    if Config.SetGangAs == 'job' then
+        return PlayerData.job
+    elseif Config.SetGangAs == 'job2' then
+        return PlayerData.job2
+    elseif Config.SetGangAs == 'metadata' then
+        return PlayerData.gang
+    end
+
+    return false
+end)
+
+AddEventHandler('onResourceStart', function(resource)
+    if cache.resource == resource then
+        Wait(1000)
+        PlayerData = ESX.GetPlayerData()
+        TriggerServerEvent('mh_gang:GetPlayerGang')
+        Wait(500)
+        PlayerLoaded = true
+        SetUpMafia()
+    end
+end)
+```
+</details>
+
+<details>
+<summary>bridge/esx/server.lua</summary>
+```lua
+if not IsESX() then return end
+
+ESX = exports[Config.FrameworkName]:getSharedObject()
+
+function GetGang(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if xPlayer then
+        if Config.SetGangAs == 'job' then
+            return xPlayer.job.name
+        elseif Config.SetGangAs == 'job2' then
+            return xPlayer.job2.name
+        elseif Config.SetGangAs == 'metadata' then
+            return GetMetadataGang(src)
+        end
+    end
+
+    return false
+end
+
+exports('GetGang', function(playerId)
+    local xPlayer = ESX.GetPlayerFromId(playerId)
+
+    if xPlayer then
+        if Config.SetGangAs == 'job' then
+            return xPlayer.job
+        elseif Config.SetGangAs == 'job2' then
+            return xPlayer.job2
+        elseif Config.SetGangAs == 'metadata' then
+            return GetMetadataGangData(playerId)
+        end
+    end
+
+    return false
+end)
+
+function GetMoney(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if xPlayer then
+        return xPlayer.getMoney()
+    end
+
+    return 0
+end
+
+function RemoveMoney(src, amount)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if xPlayer then
+        xPlayer.removeMoney(amount)
+    end
+end
+
+function SetGang(src, name, grade)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if xPlayer then
+        if Config.SetGangAs == 'job' then
+            xPlayer.setJob(name, grade)
+        elseif Config.SetGangAs == 'job2' then
+            xPlayer.setJob2(name, grade)
+        elseif Config.SetGangAs == 'metadata' then
+            UpdateGang(src, Jobs[name].grades[tostring(grade)])
+        end
+    end
+end
+
+function GradeUpdateBoss(src, data)
+    local xPlayer = ESX.GetPlayerFromId(src)
+    local xTarget = ESX.GetPlayerFromIdentifier(data.identifier)
+
+    if Config.SetGangAs == 'job' then
+        if IsBoss(xPlayer.source) then
+            if xTarget then
+                xTarget.setJob(data.job, data.grade)
+                DiscordLog(L('discord.gradeUpdate.online.title'), L('discord.gradeUpdate.online.msg'):format(GetPlayerName(xPlayer.source), GetPlayerName(xTarget.source), data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            else
+                MySQL.update('UPDATE `users` SET `job` = ?, `job_grade` = ? WHERE `identifier` = ?', {data.job, data.grade, data.identifier})
+                DiscordLog(L('discord.gradeUpdate.offline.title'), L('discord.gradeUpdate.offline.msg'):format(GetPlayerName(xPlayer.source), data.identifier, data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            end
+        else
+            print( ('%s (%s) tried to update grade for %s but isnt boss'):format(GetPlayerName(xPlayer.source), xPlayer.identifier, data.identifier) )
+            DiscordLog(L('discord.gradeUpdate.title.cheater'), L('discord.gradeUpdate.msg.cheater'):format(GetPlayerName(xPlayer.source), data.identifier), Discord.TagEveryoneFields.updateGradeCheater)
+        end
+    elseif Config.SetGangAs == 'job2' then
+        if IsBoss(xPlayer.source) then
+            if xTarget then
+                xTarget.setJob2(data.job, data.grade)
+                DiscordLog(L('discord.gradeUpdate.online.title'), L('discord.gradeUpdate.online.msg'):format(GetPlayerName(xPlayer.source), GetPlayerName(xTarget.source), data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            else
+                MySQL.update('UPDATE `users` SET `job2` = ?, `job2_grade` = ? WHERE `identifier` = ?', {data.job, data.grade, data.identifier})
+                DiscordLog(L('discord.gradeUpdate.offline.title'), L('discord.gradeUpdate.offline.msg'):format(GetPlayerName(xPlayer.source), data.identifier, data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            end
+        else
+            print( ('%s (%s) tried to update grade for %s but isnt boss'):format(GetPlayerName(xPlayer.source), xPlayer.identifier, data.identifier) )
+            DiscordLog(L('discord.gradeUpdate.title.cheater'), L('discord.gradeUpdate.msg.cheater'):format(GetPlayerName(xPlayer.source), data.identifier), Discord.TagEveryoneFields.updateGradeCheater)
+        end
+    elseif Config.SetGangAs == 'metadata' then
+        if IsBoss(xPlayer.source) then
+            if xTarget then
+                UpdateGang(xTarget.source, Jobs[data.job]?.grades[tostring(data.grade)])
+                DiscordLog(L('discord.gradeUpdate.online.title'), L('discord.gradeUpdate.online.msg'):format(GetPlayerName(xPlayer.source), GetPlayerName(xTarget.source), data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            else
+                MySQL.update('UPDATE `mh_gang_users` SET `job` = ? WHERE `identifier` = ?', { json.encode(Jobs[data.job].grades[tostring(data.grade)], { sort_keys = true }), data.identifier })
+                DiscordLog(L('discord.gradeUpdate.offline.title'), L('discord.gradeUpdate.offline.msg'):format(GetPlayerName(xPlayer.source), data.identifier, data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+            end
+        else
+            print( ('%s (%s) tried to update grade for %s but isnt boss'):format(GetPlayerName(xPlayer.source), xPlayer.identifier, data.identifier) )
+        end
+    end
+end
+
+function AddMoney(src, amount)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if xPlayer then
+        xPlayer.addMoney(amount)
+    end
+end
+
+function IsBoss(src)
+    local xPlayer = ESX.GetPlayerFromId(src)
+
+    if Config.SetGangAs == 'job' then
+        if xPlayer then
+            return xPlayer.job.grade_name == 'boss'
+        end
+    elseif Config.SetGangAs == 'job2' then
+        return xPlayer.job2.grade_name == 'boss'
+    elseif Config.SetGangAs == 'metadata' then
+        return IsBossGangMetadata(src)
+    end
+end
+
+function GetPlayerNameFramework(source)
+    if source then
+        return ESX.GetPlayerFromId(source)?.name
+    end
+
+    return 'Unknown'
+end
+
+function GetJobInfo(job)
+    local jobs = ESX.GetJobs()
+
+    if jobs[job] then
+        return jobs[job]
+    end
+
+    return {}
+end
+```
+</details>
+
+<details>
+<summary>bridge/qb/client.lua</summary>
+```lua
+if not IsQBCore() then return end
+
+local QBCore = exports[Config.FrameworkName]:GetCoreObject()
+
+AddEventHandler(Config.Events.qb.client.loaded, function()
+    PlayerData = QBCore.Functions.GetPlayerData()
+    PlayerLoaded = true
+
+    Wait(250)
+	SetUpMafia()
+end)
+
+RegisterNetEvent(Config.Events.qb.client.logout, function()
+    PlayerData = {}
+    PlayerLoaded = false
+end)
+
+RegisterNetEvent(Config.Events.qb.client.setplayerdata, function(val)
+    PlayerData = val
+end)
+
+RegisterNetEvent(Config.Events.qb.client.gangupdate, function(JobInfo)
+	PlayerData.gang = JobInfo
+    OnGangUpdate()
+    lib.hideTextUI()
+end)
+
+function IsBoss()
+    if not PlayerLoaded then return nil end
+    if PlayerData.gang.grade.isboss then
+        return true
+    end
+
+    if PlayerData.gang.isboss then
+        return true
+    end
+
+    return false
+end
+
+function GetGang()
+    if not PlayerLoaded then return nil end
+    return PlayerData.gang.name
+end
+
+exports('GetGang', function()
+    while not PlayerLoaded do Wait(50) end
+    
+    if PlayerLoaded then
+        return PlayerData.gang
+    end
+
+    return false
+end)
+
+AddEventHandler('onResourceStart', function(resource)
+	if resource == cache.resource then
+		Wait(2000)
+        PlayerData = QBCore.Functions.GetPlayerData()
+        PlayerLoaded = true
+		SetUpMafia()
+	end
+end)
+```
+</details>
+
+<details>
+<summary>bridge/qb/server.lua</summary>
+```lua
+if not IsQBCore() then return end
+QBCore = exports[Config.FrameworkName]:GetCoreObject()
+
+
+function ReloadObject()
+    QBCore = exports[Config.FrameworkName]:GetCoreObject()
+end
+
+function GetGang(src)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        return Player.PlayerData.gang.name
+    end
+
+    return false
+end
+
+exports('GetGang', function(playerId)
+    local Player = QBCore.Functions.GetPlayer(playerId)
+
+    if Player then
+        return Player.PlayerData.gang
+    end
+
+    return false
+end)
+
+function GetMoney(src)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        return Player.PlayerData.money['cash']
+    end
+
+    return 0
+end
+
+function GradeUpdateBoss(src, data)
+    local xPlayer = QBCore.Functions.GetPlayer(src)
+    local xTarget = QBCore.Functions.GetPlayerByCitizenId(data.identifier)
+
+    if IsBoss(src) then
+        if xTarget then
+            xTarget.Functions.SetGang(data.job, data.grade)
+            DiscordLog(L('discord.gradeUpdate.online.title'), L('discord.gradeUpdate.online.msg'):format(GetPlayerName(xPlayer.PlayerData.source), GetPlayerName(xTarget.PlayerData.source), data.grade), Discord.TagEveryoneFields.updateGradeOnline)
+        else
+            local ganggrade = QBCore.Shared.Gangs[data.job].grades[data.grade]
+            local newData = {}
+
+            newData.gang = {}
+            newData.gang.name = data.job
+            newData.gang.label = QBCore.Shared.Gangs[data.job].label
+            newData.gang.grade = {}
+            newData.gang.grade.name = ganggrade.name
+            newData.gang.grade.level = data.grade
+            newData.gang.grade.isboss = ganggrade.isboss or false
+
+            MySQL.update('UPDATE `players` SET `gang` = ? WHERE citizenid = ?', { json.encode(newData.gang), data.identifier})
+        end
+    else
+        print( ('%s (%s) tried to update grade for %s but isnt boss'):format(GetPlayerName(xPlayer.PlayerData.source), xPlayer.identifier, data.identifier) )
+        DiscordLog(L('discord.gradeUpdate.title.cheater'), L('discord.gradeUpdate.msg.cheater'):format(GetPlayerName(xPlayer.PlayerData.source), data.identifier), Discord.TagEveryoneFields.updateGradeCheater)
+    end
+end
+
+function RemoveMoney(src, amount)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        Player.Functions.RemoveMoney('cash', amount)
+    end
+end
+
+function IsBoss(src)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        if Player.PlayerData.gang.grade.isboss or Player.PlayerData.gang.isboss then
+            return true
+        end
+    end
+
+    return false
+end
+
+function AddMoney(src, amount)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        Player.Functions.AddMoney('cash', amount)
+    end
+end
+
+function SetGang(src, name, grade)
+    local Player = QBCore.Functions.GetPlayer(src)
+
+    if Player then
+        Player.Functions.SetGang(name, grade)
+    end
+end
+```
+</details>
+
+<details>
+<summary>bridge/framework.lua</summary>
+```lua
+PlayerData = {}
+PlayerLoaded = false
+
+function IsESX()
+    return GetResourceState("es_extended") ~= "missing"
+end
+
+function IsQBCore()
+    return GetResourceState("qb-core") ~= "missing"
+end
+```
+</details>
+
+
+<details>
+<summary>client/editable.lua</summary>
+```lua
+function sendNotify(title, description, type)
+    lib.notify({
+        title = title,
+        description = description,
+        duration = 4500,
+        type = type,
+        position = 'bottom'
+    })
+end
+
+RegisterNetEvent('mh_gang:notify', sendNotify)
+
+local illenium = GetResourceState('illenium-appearance'):find('start')
+function OpenWardrobe()
+    if illenium then
+        TriggerEvent('illenium-appearance:client:openOutfitMenu')
+    end
+end
+
+local NewQb = false
+
+if Inv.qb then
+    local version = GetResourceMetadata('qb-inventory', 'version')
+
+    if version then
+        local ver = tonumber(version:match('^(%d+)%.'))
+
+        if ver >= 2 then
+            NewQb = true
+        else
+            NewQb = false
+        end
+    end
+end
+
+function OpenNearbyPlayerInventory(id)
+    if id then
+        if Inv.ox then
+            Inv.exp:openInventory('player', id)
+        elseif Inv.qb then
+            if not NewQb then
+                TriggerServerEvent("inventory:server:OpenInventory", "otherplayer", id)
+            else
+                TriggerServerEvent('mh_gang:server:OpenNearbyPlayer', id)
+            end
+        elseif Inv.ak then
+            Inv.exp:OpenInventory(id)
+        end
+    end
+end
+
+function OpenGangStash(id, job, level)
+    if Inv.ox then
+        Inv.exp:openInventory('stash', id)
+    elseif Inv.qs then
+        TriggerServerEvent(Config.InventoryPrefix..":server:OpenInventory", "stash", id, {
+            maxweight = Config.stash[level][2] * 1000,
+            slots = Config.stash[level][1],
+        })
+        TriggerEvent(Config.InventoryPrefix..":client:SetCurrentStash", id)
+    elseif Inv.qb then
+        if not NewQb then
+            TriggerServerEvent("inventory:server:OpenInventory", "stash", id, {
+                maxweight = Config.stash[level][2] * 1000,
+                slots = Config.stash[level][1],
+            })
+
+            TriggerEvent("inventory:client:SetCurrentStash", id)
+        else
+            TriggerServerEvent('mh_gang:server:OpenQBInv', job, id)
+        end
+    elseif Inv.core then
+        TriggerServerEvent('core_inventory:server:openInventory', id, 'stash')
+    elseif Inv.codem then
+        TriggerServerEvent('codem-inventory:server:openstash', id, Config.stash[level][1], Config.stash[level][2], '')
+    elseif Inv.ak then
+        Inv.exp:OpenInventory(id)
+    end
+end
+
+local qskeys = GetResourceState('qs-vehiclekeys'):find('start')
+local wasabikeys = GetResourceState('wasabi_carlock'):find('start')
+local qbkeys = GetResourceState('wasabi_carlock'):find('start')
+
+function GiveCarKeys(vehicle, plate)
+    if qskeys then
+        exports['qs-vehiclekeys']:GiveKeysAuto()
+    elseif wasabikeys then
+        exports.wasabi_carlock:GiveKey(plate)
+    else
+        TriggerEvent('qb-vehiclekeys:client:AddKeys', plate)
+        TriggerEvent('vehiclekeys:client:SetOwner', plate)
+    end
+end
+
+function RemoveCarKeys(vehicle, plate)
+    if qskeys then
+        local model = GetDisplayNameFromVehicleModel(GetEntityModel(cache.vehicle))
+        exports['qs-vehiclekeys']:RemoveKeys(plate, model)
+    elseif wasabikeys then
+        exports.wasabi_carlock:RemoveKey(plate)
+    elseif qbkeys then
+        TriggerEvent('qb-vehiclekeys:client:RemoveKeys', plate)
+    end
+end
+
+-- triggered when player is cuffed/uncuffed
+AddEventHandler('mh_gang:cuffPlayer', function(value)
+    
+end)
+```
+</details>
+
+<details>
+<summary>server/editable.lua</summary>
+```lua
+if IsQBCore() then
+    local qbox = GetResourceState('qbx_core'):find('start')
+    local qbcore = GetResourceState('qb-core'):find('start')
+
+    function InsertGang(label, name, grades)
+        if qbox then
+            local gang = {}
+            local newValue, newGrades = {}, {}
+
+            for k,v in pairs(grades) do
+                newValue[#newValue+1] = { id = tonumber(k), data = v }
+            end
+
+            table.sort(newValue, function(a, b)
+                return a.id < b.id
+            end)
+
+            for k,v in pairs(newValue) do
+                newGrades[v.id] = v.data
+            end
+
+            gang[name] = {
+                label = label,
+                grades = newGrades,
+            }
+
+            return exports['qbx_core']:CreateGangs(gang)
+        elseif qbcore then
+            local gang = {
+                label = label,
+                grades = grades
+            }
+
+            return QBCore.Functions.AddGang(name, gang)
+        end
+    end
+
+    function SetGang(source, name, grade)
+        if qbox then
+            QBCore.Functions.GetPlayer(source)?.Functions.SetGang(name, tonumber(grade))
+        elseif qbcore then
+            QBCore.Functions.GetPlayer(source)?.Functions.SetGang(name, tostring(grade))
+        end
+    end
+end
+
+function GiveSalary(source, salary)
+    if IsESX() then
+        ESX.GetPlayerFromId(source)?.addAccountMoney('bank', salary, 'Paycheck')
+    elseif IsQBCore() then
+        QBCore.Functions.GetPlayer(source)?.Functions.AddMoney('cash', salary, 'Paycheck')
+    end
+end
+
+function RegisterGangStash(id, label, level)
+    if Inv.ox then
+        Inv.exp:RegisterStash(id, label, Config.stash[tonumber(level)][1], Config.stash[tonumber(level)][2] * 1000, false)
+    elseif Inv.qs then
+        Inv.exp:RegisterStash('', id, Config.stash[tonumber(level)][1], Config.stash[tonumber(level)][2])
+    elseif Inv.ak then
+        Inv.exp:CreateInventory(id, {
+            label = label,
+            maxWeight = Config.stash[tonumber(level)][2],
+            maxSlots = Config.stash[tonumber(level)][1],
+            type = 'stash',
+        })
+    end
+end
+
+RegisterNetEvent('mh_gang:server:OpenQBInv', function(job, name)
+    local src = source
+    local gang = exports.mh_gang:DoesGangExist(job)
+
+    if type(gang) == "table" then
+        exports['qb-inventory']:OpenInventory(src, name, {
+            maxweight = Config.stash[tonumber(gang.level)][2] * 1000,
+            slots = Config.stash[tonumber(gang.level)][2],
+        })
+    end
+end)
+
+RegisterNetEvent('mh_gang:server:OpenNearbyPlayer', function(id)
+    local src = source
+    local gang = GetGang(src)
+
+    if gang ~= '' then
+        exports['qb-inventory']:OpenInventoryById(src, tonumber(id))
+    end
+end)
+```
+</details>
+
+<details>
+<summary>config/config.lua</summary>
+```lua
+Config = {
+    FrameworkName = IsESX() and 'es_extended' or 'qb-core',
+
+    Locale = 'en',
+
+    -- spawning vehicles via server side, if you have issues where it takes too long to spawn vehicle or something like this put this to false
+    SpawnVehicleServerSide = false,
+
+    Events = {
+        esx = {
+            client = {
+                loaded = 'esx:playerLoaded',
+                logout = 'esx:onPlayerLogout',
+                setjob = 'esx:setJob'
+            },
+
+            server = {
+                loaded = 'esx:playerLoaded',
+                logout = 'esx:playerLogout'
+            }
+        },
+        qb = {
+            client = {
+                loaded = 'QBCore:Client:OnPlayerLoaded',
+                logout = 'QBCore:Client:OnPlayerUnload',
+                setplayerdata = 'QBCore:Player:SetPlayerData',
+                gangupdate = 'QBCore:Client:OnGangUpdate'
+            }
+        }
+    },
+
+    enableWardrobe = true,              -- enables function for opening wardrobe, in client/editable.lua in OpenWardrobe function put your event
+
+    disableIntegratedVehicles = false,  -- option for disabling integrated vehicles
+
+    -- players only can be searched if you cuff them first
+    SearchOnlyWhenCuffed = true,
+
+    -- disable moving while cuffed?
+    freezeWhileCuffed = true,
+
+    -- ESX ONLY
+
+    --SetGangAs = 'job',            -- will set gang as job
+    --SetGangAs = 'job2',           -- will set gang as job2
+    --SetGangAs = 'metadata',       -- will set gang on our system and work from there leaving your job or job2 free to use
+
+    SetGangAs = 'metadata',
+
+    InventoryPrefix = 'inventory',      -- If you use Quasar Inventory then you need to modify this to match prefix as in Quasar Inventory
+
+    -- cuff, uncuff, put in vehicle on target script?
+    MafiaActionsOnTarget = false,
+
+
+    VehiclePlate = { -- https://overextended.dev/ox_lib/Modules/String/Shared#libstring
+        pattern = '........',
+        length = 8
+    },
+
+    TargetOptions = {
+        search = true,
+        cuff = true,
+        escort = true,
+        putin = true,
+        takeout = true
+    },
+
+    mafiaMenu = {                       -- f6 action menu position, available positions: 'top-left' or 'top-right' or 'bottom-left' or 'bottom-right'
+        defaultKey = 'F6',              -- key for opening menu
+        position = 'top-right',
+        enabled = false,                 -- if you dont want it put false
+    },
+
+    commands = {
+        creator = {
+            name = 'creategang',       -- command for creating gang
+            restricted = 'group.admin', -- grop that will have acces to command 
+        },
+
+        deleteMafia = {
+            name = 'deletegang',         -- command for deleting gang, /deletegang gang
+            restricted = 'group.admin'  -- group that will have acces to command 
+        },
+
+        teleportToBase = {
+            name = 'tpbase',            -- command for teleporting to gang, /tpbase gang
+            restricted = 'group.admin'  -- group that will have acces to command 
+        },
+
+        findBase = {
+            name = 'findbase',          -- command for players to find their base via gps
+            enabled = true              -- by puting here false you disable this command
+        },
+
+        resetMarker = {
+            name = 'resetmarker',       -- command for reseting all markers to 1 again
+            restricted = 'group.admin'  -- group that will have acces to command 
+        },
+
+        updateCars = {
+            name = 'updatevehicles',    -- command for updating integrated vehicles in gang
+            restricted = 'group.admin'  -- group that will have acces to command 
+        },
+
+        updateHeli = {
+            name = 'updateheli',        -- command for updating integrated helicotpers in gang
+            restricted = 'group.admin'  -- group that will have acces to command 
+        },
+
+        newMarker = {
+            name = 'newmarker',         -- command for adding more markers
+            restricted = 'group.admin', -- group that will have acces to command 
+        },
+
+        setGang = {
+            name = 'uisetgang',           -- command for setting gang
+            restricted = 'group.admin'    -- group that will have acces to command 
+        },
+
+        removeGang = {
+            name = 'removegang',
+            restricted = 'group.admin',
+        },
+
+        mygang = {
+            name = 'mygang',
+            restricted = 'group.admin'
+        }
+    },
+
+    -- if set to true everybody at server who has password can acces stash
+    stashAccessEveryone = false, -- if set to false only people who has job can access that stash, again if they have password
+
+    stash = {
+        [1] = {10, 10},     -- [level] = {slots, kg}
+        [2] = {20, 20},     -- [level] = {slots, kg}
+        [3] = {30, 30},     -- [level] = {slots, kg}
+        [4] = {40, 40},     -- [level] = {slots, kg}
+        [5] = {50, 50},     -- [level] = {slots, kg}
+        [6] = {60, 60},     -- [level] = {slots, kg}
+        [7] = {70, 70},     -- [level] = {slots, kg}
+        [8] = {80, 80},     -- [level] = {slots, kg}
+        [9] = {90, 90},     -- [level] = {slots, kg}
+        [10] = {100, 100},  -- [level] = {slots, kg}
+    },
+
+    Levels = {               -- prices for levels
+        [1] = 500,           -- price for level 2 
+        [2] = 1000,          -- price for level 3
+        [3] = 1500,          -- price for level 4
+        [4] = 2000,          -- price for level 4 
+        [5] = 2500,          -- price for level 4 
+        [6] = 3000,          -- price for level 4 
+        [7] = 3500,          -- price for level 4
+        [8] = 4000,          -- price for level 4 
+        [9] = 4500,          -- price for level 4 
+        [10] = 5000,         -- price for level 4 
+    },
+
+    firePlayerData = {
+        qb = {
+            job = 'none',
+            grade = 0
+        },
+
+        -- if your SetGangAs is metadata then this is not important
+        esx = {
+            job = 'unemployed',
+            grade = 0,
+        }
+    },
+
+    TuneOptions = {
+        modEngine = 3,
+        modBrakes = 2,
+        modTransmission = 2,
+        modSuspension = 3,
+        modArmor = true,
+        windowTint = 1,
+
+        -- other possibilities you can find here: https://overextended.dev/ox_lib/Modules/VehicleProperties/Client#vehicle-properties
+        -- if you dont know how to setup this properly, open ticket at our discord
+    },
+
+    dealership = {                                                  -- only mafia can see blip and open dealership
+        enable = true,                                              -- if you dont want this option put false here, ALSO DISABLES OWNED VEHICLES GARAGE
+        blip = {
+            type = 227,                                             -- https://docs.fivem.net/docs/game-references/blips/
+            scale = 0.6,
+            colour = 3,                                             -- https://docs.fivem.net/docs/game-references/blips/#blip-colors
+            text = 'Illegal Dealership'
+        },
+        coords = vec3(499.257, -1338.011, 29.319),                  -- coords for marker, blip
+        vehiclePreview = vec4(493.756, -1332.161, 28.336, 252.884),
+        unitCalculator = 'kmh'                                      -- or 'mph', this is for calculating vehicle max speed
+    },
+
+    -- only mafia can see blip and interact
+    impound = {
+        blip = {
+            type = 227,     -- https://docs.fivem.net/docs/game-references/blips/
+            scale = 0.6,
+            colour = 1,     -- https://docs.fivem.net/docs/game-references/blips/#blip-colors
+            text = 'Illegal Impound'
+        },
+        coords = vec3(-465.680, -1707.112, 18.811), -- marker
+        spawn = vec3(-456.535, -1706.918, 18.819),  -- coords where vehicle spawns after purchasing
+
+    },
+
+    ImpoundPrices = {
+        -- These are vehicle classes
+        [0] = 300,      -- Compacts
+        [1] = 500,      -- Sedans
+        [2] = 500,      -- SUVs
+        [3] = 800,      -- Coupes
+        [4] = 1200,     -- Muscle
+        [5] = 800,      -- Sports Classics
+        [6] = 1500,     -- Sports
+        [7] = 2500,     -- Super
+        [8] = 300,      -- Motorcycles
+        [9] = 500,      -- Off-road
+        [10] = 1000,    -- Industrial
+        [11] = 500,     -- Utility
+        [12] = 600,     -- Vans
+        [13] = 100,     -- Cylces
+        [14] = 2800,    -- Boats
+        [15] = 3500,    -- Helicopters
+        [16] = 3800,    -- Planes
+        [17] = 500,     -- Service
+        [18] = 0,       -- Emergency
+        [19] = 100,     -- Military
+        [20] = 1500,    -- Commercial
+        [21] = 0        -- Trains (lol)
+    },
+
+    Payout = {
+        enabled = true,         -- if you have in es_extended config Config.EnableSocietyPayouts = false then put this to false, otherwise people will get payout in this script and and via es_extended, if you use SetGangAs = 'metadata' then this doesnt apply, same applies to qb core
+        payFromBalance = true,  -- should people get salary from gang balance?,
+        interval = 7 * 60000    -- how often to recieve pay checks in milliseconds, (7min)
+    }
+}
+```
+</details>
+
+<details>
+<summary>config/server_config.lua</summary>
+```lua
+Discord = {
+
+    url = '',  -- url here
+
+    title = 'Server Name',
+
+    /*
+        https://www.spycolor.com/
+
+        ['default'] = 14423100,
+        ['blue'] = 255,
+        ['red'] = 16711680,
+        ['green'] = 65280,
+        ['white'] = 16777215,
+        ['black'] = 0,
+        ['orange'] = 16744192,
+        ['yellow'] = 16776960,
+        ['pink'] = 16761035,
+        ['lightgreen'] = 65309,
+    */
+
+    color = 65309, -- green
+
+    imageUrl = '', -- optional, if you dont want it put ''
+
+
+    TagEveryoneFields = {               -- here you can handle which log should/or not tag @everyone
+        mafiaCreating = false,          -- when mafia is created by admin
+        levelUp = false,                -- when players level up their mafia 
+        firePeopleOnline = false,       -- when players fires people from mafia that are online
+        firePeopleOffline = false,      -- when players fires people from mafia that are offline
+        firePeopleCheater = true,       -- when somebody tries to fire people from mafia without boss grade
+        hire = false,                   -- when boss hires new people
+        hireCheater = true,             -- when somebody that doesnt have boss grade tries to hire via cheat
+        eventCheck = true  ,            -- when tries to execute event via executor
+        updateGradeCheater = true,      -- when somebody tries to update grade for players that doesnt have boss
+        updateGradeOnline = false,      -- when grade is updated for players
+        moneyWithdraw = false,          -- when money is withdrawn from mafia
+        moneyDeposit = false,           -- when money is deposited in mafia
+        vehicleBuy = false,             -- vehicle buying
+        deleteVehicles = false,         -- when admin deletes integrated vehicle from mafia
+        newVehicle = false,             -- when new vehicle is added by admin
+        updateBoss = false,             -- when boss menu marker is updated via command
+        vehicleMarker = false,          -- when vehicle marker is updated via command
+        heliMarker = false,             -- when helicopter marker is updated via command
+        lvl = false,                    -- when level marker is updated via command
+        stashUpdate = false,            -- when stash position is updated via command
+    }
+}
+```
+</details>
+
+
+<details>
+<summary>config/vehicles.lua</summary>
+```lua
+Vehicles = {
+    ['sport'] = {
+        {label = 'sport', values = {
+            {label = 'Adder', model = `adder`, price = 1000, description = '', level = 1 },
+            {label = 'Zentorno', model = `zentorno`, price = 2000, description = '', level = 1 },
+            {label = 'T20', model = `t20`, price = 3000, description = '', level = 1 },
+        }}
+    },
+
+    ['coupes'] = {
+        {label = 'coupes', values = {
+            {label = 'Felon', model = `Felon`, price = 1000, description = '', level = 1 },
+            {label = 'FelonB', model = `felon2`, price = 2000, description = '', level = 1 },
+            {label = 'Oracle', model = `Oracle`, price = 3000, description = '', level = 1 },
+        }}
+    },
+
+    ['offroads'] = {
+        {label = 'offroads', values = {
+            {label = 'Bfinjection', model = `bfinjection`, price = 1000, description = '', level = 1 },
+            {label = 'Bifta', model = `bifta`, price = 2000, description = '', level = 1 },
+            {label = 'Bodhi', model = `bodhi2`, price = 3000, description = '', level = 1 },
+        }}
+    },
+}
+```
+</details>
+
+
+<details>
+<summary>locales/en.lua</summary>
+```lua
+Locales['en'] = {
+  -- ### CREATOR ### ---
+
+  ['creator'] = 'Gang Creator',
+  ['creator.name'] = 'Name',
+  ['creator.label'] = 'Label',
+  ['creator.pw'] = 'Password for stash',
+  ['creator.pw.description'] = 'Anything is acceptable',
+  ['creator.vehicles'] = 'Vehicles',
+  ['creator.vehicles.description'] = 'How many vehicles this gang will have (OPTIONAL)',
+  ['creator.heli'] = 'Helicopters',
+  ['creator.heli.description'] = 'How many vehicles this gang will have (OPTIONAL)',
+  ['creator.grades'] = 'Grades',
+  ['creator.grades.description'] = 'How many grades this gang will have',
+  ['creator.mafiacreated'] = 'Successfully created %s gang',
+
+  -- grades menu creator
+
+  ['grade'] = 'Grades Menu (%s/%s)',
+  ['grade.name'] = 'Grade Name',
+  ['grade.placeholder'] = 'member (If boss name it boss)',
+  ['grade.label'] = 'Grade Label',
+  ['grade.label.placeholder'] = 'Member',
+  ['grade.salary'] = 'Salary',
+
+  -- vehicle menus creator
+
+  ['veh'] = 'Vehicle Menu',
+  ['veh.label'] = 'Vehicle Label',
+  ['veh.label.placeholder'] = 'Peggasi Zentorno',
+  ['veh.spawncode'] = 'Spawn Code',
+  ['veh.spawncode.placeholder'] = 'zentorno',
+  ['veh.color1'] = 'Primary Color',
+  ['veh.color2'] = 'Secondary Color',
+  ['veh.fulltune'] = 'Full Tune',
+  ['veh.optional'] = 'Optional',
+  ['veh.update.name'] = 'Chose Gang',
+  ['veh.update.action'] = 'Chose Action',
+  ['veh.options.add'] = 'Add New',
+  ['veh.options.update'] = 'Update',
+  ['veh.options.delete'] = 'Delete',
+  ['veh.options.update.name'] = 'Chose Vehicle',
+
+
+
+  ['player.not.cuffed'] = 'Player is not cuffed',
+  -- ui set gang
+
+  ['setgangui.label'] = 'Player ID',
+  ['setgangui.label2'] = 'Chose Gang',
+  ['setgangui.label3'] = 'Chose Grade',
+
+  -- update markers menu
+  ['update.marker.label'] = 'Chose Gang',
+  ['update.marker.action'] = 'Chose Action',
+  ['update.marker.boss'] = 'Boss Marker',
+  ['update.marker.vehicle'] = 'Vehicle Marker',
+  ['update.marker.delete'] = 'Delete Vehicle Marker',
+  ['update.marker.heli'] = 'Helicotper',
+  ['update.marker.level'] = 'Level Marker',
+  ['update.marker.stash'] = 'Stash',
+  ['update.marker.pickmafia'] = 'Pick Gang',
+  ['update.marker.noheli'] = 'This Gang doesnt have Helicotper marker, do you want to create it?',
+
+  -- helicopter menu creator
+  ['heli'] = 'Helicopter Menu',
+  ['heli.label'] = 'Helicopter Label',
+  ['heli.label.placeholder'] = 'Maverick',
+  ['heli.spawncode'] = 'Spawn Code',
+  ['heli.spawncode.placeholder'] = 'Maverick',
+
+  ['lvluped'] = 'Level updated to %s',
+
+  -- creator notify
+
+  ['alert.header'] = 'Marker Creation',
+  ['alert.content'] = 'You will need to put markers for: Vehicles, Boss Menu, Stash',
+  ['textui.boss'] = '[E] - Save position for Boss Actions',
+  ['textui.veh'] = '[E] - Save position for Vehicle',
+  ['textui.dellveh'] = '[E] - Save position for Save Vehicles',
+  ['textui.stash'] = '[E] - Save position for Save Stash',
+  ['textui.heli'] = '[E] - Save position for Helicopters',
+  ['textui.lvl'] = '[E] - Save position for Level',
+  
+  -- ### CREATOR ### ---
+
+
+  --- ### Markers/Stash ### ---
+
+  ['menu.lvl'] = 'Gang Level Menu',
+  ['menu.maxlvl'] = 'Max Level',
+  ['menu.lvl.currentlvl'] = 'Current Level: %s',
+  ['menu.lvl.title'] = 'Level %s',
+  ['menu.lvl.wardrobe'] = 'Wardrobe',
+  ['menu.lvl.title.description'] = 'Hover to see description for next level\nPrice for next level: %s',
+  ['menu.lvl.description'] = 'Increases stash size to %s slots and weight to %s kg',
+  ['menu.openstash'] = 'Open Stash',
+  ['target.openstash'] = 'Open Stash',
+  ['target.openstash.icon'] = 'fas fa-box-open',
+  ['stash.dialog'] = 'Enter Stash',
+  ['stash.dialog.pw'] = 'Password',
+  ['stash.wrong.pw'] = 'Wrong Pw',
+  ['marker.boss'] = '[E] - Open Boss Menu',
+  ['marker.veh'] = '[E] - Open Vehicle Menu',
+  ['marker.veh.park'] = '[E] - To park',
+  ['marker.heli'] = '[E] - Open Helicopter Menu',
+  ['marker.lvl'] = '[E] - Open Level Menu',
+  ['marker.stash'] = '[E] - Open Stash',
+
+  --- ### Markers/Stash ### ---
+
+  -- ### Command ### --
+  ['command.name.creator.help'] = 'Create New Gang',
+  ['command.name.tpbase.help'] = 'Teleport to Gang base',
+  ['command.name.dellorg.help'] = 'Remove Gang',
+  ['command.dellorg.nomafia'] = 'There is no registered gang/s',
+  ['command.dellorg.canceled'] = 'You canceled deleting gang',
+  ['command.dellorg.delted'] = 'Your gang is deleted, we are removing job from you',
+  ['command.updateCars.description'] = 'Command for updating integrated vehicles in gang',
+  ['command.updateHeli.description'] = 'Command for updating integrated helicotpers in gang',
+  ['command.setgang.help'] = 'Command for setting gang to player',
+
+  -- ### Command ### --
+
+  -- ### Vehicles Menu ### --
+
+  ['vehmenu.title'] = 'Vehicle Menu',
+  ['vehmenu.integrated'] = 'Integrated Vehicles',
+  ['vehmenu.heli'] = 'Helicopter Menu',
+  ['vehmenu.integrated.description'] = 'Vehicles that are integrated in this gang',
+  ['vehmenu.ownedveh'] = 'Purchased Vehicles',
+  ['vehmenu.ownedveh.description'] = 'Vehicles bought in illegal dealership',
+  ['textui.open'] = '[E] - Open Dealership',
+  ['vehmenu.noveh'] = 'No Vehicles',
+  ['vehmenu.garage.title'] = 'Garage',
+  ['something.wrong.spawn'] = 'Something went wrong while spawning the vehicle',
+
+  -- ### Vehicles Menu ### --
+
+  -- ### Boss Menu ### --
+  ['boss.title'] = 'Boss Menu',
+  ['boss.balance'] = 'Balance: %s',
+  ['boss.players'] = 'Player Managment',
+  ['boss.players.hire'] = 'Hire People',
+  ['boss.players.members'] = 'Members',
+  ['boss.players.moneyhandler'] = 'Money Handler',
+  ['boss.players.list'] = 'Total Members: %s',
+  ['boss.players.status.online'] = 'Online',
+  ['boss.players.status.offline'] = 'Offline',
+  ['boss.players.description'] = 'Grade: %s',
+  ['boss.players.grade'] = 'Update Grade',
+  ['boss.players.grade.derank'] = 'Fire Person',
+  ['boss.players.offline'] = 'Offline Players',
+  ['boss.no.players.offline'] = 'You dont have offline players',
+  ['boss.players.chose'] = 'Chose Option',
+  ['boss.players.online'] = 'Online Players',
+  ['boss.players.hired'] = 'You hired: %s %s',
+  ['boss.players.hire.samejob'] = 'That person has same job as you',
+  ['boss.nonearby'] = 'No players nearby',
+  ['boss.players.gothired'] = 'You got job: %s - %s',
+  ['boss.menu.withdraw'] = 'You have withdrawn $%s',
+  ['boss.menu.deposit'] = 'You have deposited $%s',
+  ['boss.deposit.howmuch'] = 'How much you would like to deposit?',
+  ['boss.deposit.amount'] = 'Amount',
+  ['boss.withdraw.title'] = 'Withdraw',
+  ['boss.deposit.title'] = 'Deposit',
+  -- ### Boss Menu ### --
+
+
+  --- ### Dealership ### ---
+  ['dealership.title'] = 'Dealership',
+  ['dealership.description.info'] = 'Price: $%s | Speed: %s | Required Level: %s',
+  ['description.cantopen'] = 'You cant use this while in dealership menu',
+  ['dealership.primaryColor'] = 'Primary Color',
+  ['dealership.secondaryColor'] = 'Secondary Color',
+  ['dealership.buy'] = 'Buy',
+  ['dealership.money'] = 'Money',
+  ['dealership.bank'] = 'Bank',
+  ['dealership.pickcolor'] = 'Pick Color',
+  ['dealership.nomoney'] = 'No Money',
+  --- ### Dealership ### ---
+
+  --- ### Discord Logs ### ---
+  ['discord.mafiacreating'] = '`%s` has created `%s` gang',
+  ['discord.spawncar.title'] = 'Spawn Car - Potentially Cheater',
+  ['discord.spawncar.msg'] = '%s tried to trigger event for spawning vehicle without having gang job, executor?',
+  ['discord.hire.cheater.title'] = 'Hire People - Potentially Cheater',
+  ['discord.hire.cheater.msg'] = '%s tried to hire %s in %s but doesnt have boss grade, grade %s',
+  ['discord.hire.title'] = 'Hire People',
+  ['discord.hire.msg'] = '%s has hired %s in %s',
+  ['discord.gradeUpdate.title.cheater'] = 'Grade Update',
+  ['discord.gradeUpdate.msg.cheater'] = '%s tried to update job for %s but isnt boss',
+  ['discord.gradeUpdate.online.title'] = 'Update Grade - Online',
+  ['discord.gradeUpdate.online.msg'] = '%s updated grade for %s to grade %s',
+  ['discord.gradeUpdate.offline.title'] = 'Update Grade - Online',
+  ['discord.gradeUpdate.offline.msg'] = '%s updated grade for %s to grade %s',
+  ['discord.withdraw.title'] = 'Money Withdraw',
+  ['discord.withdraw.msg'] = '%s has withdrawn $%s from %s',
+  ['discord.deposit.title'] = 'Money Deposit',
+  ['discord.deposit.msg'] = '%s has deposited $%s in %s',
+  ['discord.dealership.title'] = 'Vehicle Purchase',
+  ['discord.dealership.msg'] = '%s has bought %s for %s gang',
+  ['discord.vehs.delete.title'] = 'Vehicle Deleting',
+  ['discord.vehs.delete.msg'] = '%s has deleted %s from %s',
+  ['discord.vehs.new.title'] = 'Inserting New Vehicles',
+  ['discord.vehs.new.msg'] = '%s has added %s to %s',
+  ['discord.vehs.edit.title'] = 'Updating Vehicles',
+  ['discord.vehs.edit.msg'] = '%s has updated %s in %s: \nPrimary Color: `%s`\nSecondary Color: `%s`\nFull Tune: `%s`',
+  ['discord.mafia.levelUP.title'] = 'Gang Level Update',
+  ['discord.mafia.levelUP.msg'] = '%s (Job: %s) has leveled up gang to %s level',
+  ['discord.firePerson.title'] = 'Firing People From Gang',
+  ['discord.firePerson.msg'] = '`%s` has fired `%s` from `%s`',
+  ['discord.firePerson.cheater.title'] = 'Fire People - Potentially Cheater',
+  ['discord.firePerson.cheater.msg'] = '`%s` tried to fire people in `%s` without boss grade, his grade: `%s`',
+  ['discord.creatingMafia.title'] = 'Creating Gang',
+  ['discord.creatingMafia.msg'] = '`%s` has created `%s` gang',
+  ['discord.update.boss.title'] = 'Boss Marker Updated',
+  ['discord.update.boss.msg'] = '`%s` has updated `Boss Marker` for `%s`. New Coords: `%s`',
+  ['discord.update.veh.title'] = 'Vehicle Marker Updated',
+  ['discord.update.veh.msg'] = '`%s` has updated `Vehicle Marker` for `%s`. New Coords: `%s`',
+  ['discord.update.heli.title'] = 'Helicopter Marker Updated',
+  ['discord.update.heli.msg'] = '`%s` has updated `Helicotper Marker` for `%s`. New Coords: `%s`',
+  ['discord.update.lvl.title'] = 'Level Marker Updated',
+  ['discord.update.lvl.msg'] = '`%s` has updated `Level Marker` for `%s`. New Coords: `%s`',
+  ['discord.update.stash.title'] = 'Stash Updated',
+  ['discord.update.stash.msg'] = '`%s` has updated `Stash Position` for `%s`. New Coords: `%s`',
+  --- ### Discord Logs ### ---
+
+
+  --- ### Impound ### ---
+
+  ['impound.title'] = 'Impound',
+  ['impound.nomoney'] = 'You dont have money to impound this vehicle',
+  ['impound.noveh'] = 'No Vehicles at Impound',
+  ['impound.alert'] = 'Would you like to impound %s for $%s',
+
+  --- ### Impound ### ---
+
+
+  --- ### Actions ### ---
+  ['actions.menu.title'] = 'Gang Action Menu',
+  ['actions.menu.search'] = 'Search',
+  ['actions.menu.cuff'] = 'Cuffing',
+  ['actions.menu.escort'] = 'Escort',
+  ['actions.menu.vehicle'] = 'Vehicle',
+  ['actions.menu.vehicle.put'] = 'Put in vehicle',
+  ['actions.menu.vehicle.takeout'] = 'Take Out',
+  ['actions.notcuffed'] = 'Player Not Cuffed',
+  ['actions.keymaping.description'] = 'Press F6 to open Gang Action Menu',
+  ['actions.stop.escort.target'] = '[Enter] - to stop escort',
+  --- ### Actions ### ---
+
+
+  -- Armory
+  ['remove_object'] = 'Withdraw Object',
+  ['deposit_object'] = 'Deposit Object',
+  ['inventory'] = 'Inventory',
+  ['get_weapon'] = 'Withdraw weapon from armory',
+  ['put_weapon'] = 'Store weapon in armory',
+  ['armory'] = 'Armory',
+  ['get_weapon_menu'] = 'Armory - Withdraw Weapon',
+  ['put_weapon_menu'] = 'Armory - Store Weapon',
+  ['confirm'] = 'Confirm',
+  ['quantity_invalid'] = 'Invalid quantity',
+  ['quantity'] = 'Quantity',
+  ['quantity_placeholder'] = 'Amount to withdraw..',
+
+
+  ['remove.metadata.gang'] = 'You removed gang from %s',
+  ['your.gang.is'] = 'Your gang is: %s - %s',
+  ['no.gang'] = 'You are not in any gang',
+  ['cant.find.gang.info'] = 'Cant find data for your gang :/',
+  ['gang.no.exist'] = 'That gang or grade doesnt exist',
+
+  ['open.impound.ui'] = '[E] - Open Impound',
+  ['got.paycheck'] = 'You got paycheck of $%s on your bank',
+  ['no.lvl'] = 'Your gang inst hight enough level to purchase this vehicle'
+}
+```
+</details>

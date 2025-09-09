@@ -1,0 +1,26 @@
+All garages are defined in a file using key-value pairs. The key represents the garage's label, which is used throughout the script and database, while the value is a table containing the garage's options.
+
+- Garage options: `table`
+    - type: `string`
+        - `'car', 'air', 'boat'` - whatever you want
+    - enter: `vector3`
+        - Coords of enter position
+    - parkVehicle: `vector3`
+        - Coords for parking vehicle in garage
+    - vehicleSpawnPoint: `vector4`
+        - Spawn point of vehicle
+    - price: `number`
+        - Price of garage
+    blip: `table`
+        - Blip table contains:
+            - id
+            - colour
+            - scale
+    - blackListClass: `table`
+        - Classes that are blacklisted for this garage, check list of all vehicles [here](https://docs.fivem.net/docs/game-references/vehicle-models/), table must be array
+    - GarageInfo: `string`
+        - Some general info about garage for players
+    - interior: `string`
+        - Interior from config/interior.lua
+
+You can check some predefined garages in [config/garages.lua](https://github.com/mod-haven/mh_garage/blob/main/config/garages.lua)
