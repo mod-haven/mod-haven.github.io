@@ -1,3 +1,44 @@
 ---
 title: Advanced Garage System
 ---
+
+import { Card } from 'nextra/components';
+import { FaList } from "react-icons/fa6";
+import { FaShoppingBasket } from "react-icons/fa";
+
+<div style={{  
+    position: 'relative',  
+    width: '100%',  
+    maxWidth: '800px', 
+    paddingBottom: '56.25%',  
+    height: 0,  
+    overflow: 'hidden', 
+    margin: '0 auto', 
+    borderRadius: '8px' 
+}}> 
+    <iframe  
+        src="https://www.youtube.com/embed/OFCYmE3cen8?si=oBqxAYs24oWNNGrt"  
+        title="MH Garage Demo Video"  
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}  
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"  
+        referrerPolicy="strict-origin-when-cross-origin"  
+        allowFullScreen> 
+    </iframe> 
+</div> 
+ 
+<div style={{  
+    display: 'flex',  
+    justifyContent: 'center',  
+    alignItems: 'center',
+    width: '100%',
+    marginTop: '20px'
+}}> 
+    <Card  
+        icon={<FaShoppingBasket />}  
+        title="Download Now"  
+        href="https://github.com/mod-haven/mh_garage"  
+        target="_blank"  
+        rel="noopener noreferrer"  
+        style={{ textAlign: 'center' }}  
+    /> 
+</div>

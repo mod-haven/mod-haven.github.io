@@ -2,30 +2,45 @@
 title: Advanced Gang Creator
 ---
 
-import { Cards, Card } from 'nextra/components';
+import { Card } from 'nextra/components';
 import { FaList } from "react-icons/fa6";
 import { FaShoppingBasket } from "react-icons/fa";
 
 The ultimate system for creating, managing, and customizing gangs on your server with ease.
 
-<div style={{ 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '48px',
-  alignItems: 'center' 
-}}>
-  <Cards>
-    <Card icon={<FaShoppingBasket />} title="Purchase (ESX/QB/QBOX) fix ovo" href="https://uniq.tebex.io/package/6265308" target="_blank" rel="noopener noreferrer" />
-  </Cards>
-  
-  <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-    <iframe 
-      src="https://www.youtube.com/embed/7HrEpFq5Z-U?si=f9-CO32A3gI5mzfQ" 
-      title="" 
-      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }} 
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-      referrerPolicy="strict-origin-when-cross-origin" 
-      allowFullScreen>
-    </iframe>
-  </div>
+
+<div style={{  
+    position: 'relative',  
+    width: '100%',  
+    maxWidth: '800px', 
+    paddingBottom: '56.25%',  
+    height: 0,  
+    overflow: 'hidden', 
+    margin: '0 auto', 
+    borderRadius: '8px' 
+}}> 
+    <iframe  
+        src="https://www.youtube.com/embed/7HrEpFq5Z-U?si=f9-CO32A3gI5mzfQ"  
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}  
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"  
+        referrerPolicy="strict-origin-when-cross-origin"  
+        allowFullScreen> 
+    </iframe> 
+</div> 
+ 
+<div style={{  
+    display: 'flex',  
+    justifyContent: 'center',  
+    alignItems: 'center',
+    width: '100%',
+    marginTop: '20px'
+}}> 
+    <Card  
+        icon={<FaShoppingBasket />}  
+        title="Purchase (ESX/QB/QBOX)"  
+        href="https://store.mod-haven.com/package/6993510"  
+        target="_blank"  
+        rel="noopener noreferrer"  
+        style={{ textAlign: 'center' }}  
+    /> 
 </div>
