@@ -21,7 +21,7 @@ Install the latest stable version of [MariaDB](https://mariadb.com/downloads/com
 The SQL code should install automatically. However, if it doesn't, you can manually run the following code using [HeidiSQL](https://www.heidisql.com/).
 
 ```sql copy
-CREATE TABLE IF NOT EXISTS `uniq_evidence` (
+CREATE TABLE IF NOT EXISTS `mh_evidence` (
   `caseId` varchar(50) DEFAULT NULL,
   `type` varchar(50) DEFAULT NULL,
   `data` longtext DEFAULT NULL,
@@ -275,5 +275,5 @@ Download dependencies and add them to your `resources` folder.
 </Tabs>
 
 ### Add to server.cfg
-Find your `resources` folder, inside create a new folder named `[modhaven]` if one doesn’t already exist, move the asset from [keymaster/portal](https://keymaster/portal.fivem.net/login?return_url=/assets) into `[uniq]`, and add `ensure [uniq]` at the end of your `server.cfg` file. Make sure that all dependencies listed above are started before our asset.
+Find your `resources` folder, inside create a new folder named `[modhaven]` if one doesn't already exist, download the asset from [keymaster/portal](https://keymaster/portal.fivem.net/login?return_url=/assets) and move into `[modhaven]`, and add `ensure [modhaven]` at the end of your `server.cfg` file. Make sure that all dependencies listed above are started before our asset.
 </Steps>

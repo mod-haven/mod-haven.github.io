@@ -217,7 +217,7 @@ import { Tabs } from 'nextra/components'
 
         SetTimeout(1000, function()
             if table.type(Inv) == 'empty' then
-                warn("No inventory resource was found, check uniq_evidence/inventory.lua")
+                warn("No inventory resource was found, check mh_evidence/inventory.lua")
             end
         end)
         ```
@@ -232,11 +232,11 @@ import { Tabs } from 'nextra/components'
             })
         end
 
-        RegisterNetEvent('uniq_evidence:Notify', Notify)
+        RegisterNetEvent('mh_evidence:Notify', Notify)
 
         -- callback is in server/editable.lua
         function HasItem(item)
-            return lib.callback.await('uniq_evidence:HasItem', 100, item)
+            return lib.callback.await('mh_evidence:HasItem', 100, item)
         end
 
         if Inv.ox then
@@ -257,7 +257,7 @@ import { Tabs } from 'nextra/components'
                 return false
             end
 
-            lib.callback.register('uniq_evidence:server:GetCurrentWeaponCore', function(source)
+            lib.callback.register('mh_evidence:server:GetCurrentWeaponCore', function(source)
                 local inventory = GetCoreInv(source, 'primary')
 
                 if inventory then
@@ -276,37 +276,37 @@ import { Tabs } from 'nextra/components'
             if IsESX() then
                 if Config.Features.FingerprintsVehicle then
                     ESX.RegisterUsableItem('uv_flashlight', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckFingerprints', source)
+                        TriggerClientEvent('mh_evidence:CheckFingerprints', source)
                     end)
                     ESX.RegisterUsableItem('tweezers', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckForShellsInVeh', source)
+                        TriggerClientEvent('mh_evidence:CheckForShellsInVeh', source)
                     end)
                     ESX.RegisterUsableItem('cleaning_kit', function(source)
-                        TriggerClientEvent('uniq_evidence:DestroyFingerPrintsVeh', source)
+                        TriggerClientEvent('mh_evidence:DestroyFingerPrintsVeh', source)
                     end)
                 end
 
                 if Config.Features.ShellsInVehicle then
                     ESX.RegisterUsableItem('cleaning_shells', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckShellsVehicle', source)
+                        TriggerClientEvent('mh_evidence:CheckShellsVehicle', source)
                     end)
                 end
             elseif IsQBCore() then
                 if Config.Features.FingerprintsVehicle then
                     QBCore.Functions.CreateUseableItem('uv_flashlight', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckFingerprints', source)
+                        TriggerClientEvent('mh_evidence:CheckFingerprints', source)
                     end)
                     QBCore.Functions.CreateUseableItem('tweezers', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckForShellsInVeh', source)
+                        TriggerClientEvent('mh_evidence:CheckForShellsInVeh', source)
                     end)
                     QBCore.Functions.CreateUseableItem('cleaning_kit', function(source)
-                        TriggerClientEvent('uniq_evidence:DestroyFingerPrintsVeh', source)
+                        TriggerClientEvent('mh_evidence:DestroyFingerPrintsVeh', source)
                     end)
                 end
 
                 if Config.Features.ShellsInVehicle then
                     QBCore.Functions.CreateUseableItem('cleaning_shells', function(source)
-                        TriggerClientEvent('uniq_evidence:CheckShellsVehicle', source)
+                        TriggerClientEvent('mh_evidence:CheckShellsVehicle', source)
                     end)
                 end
             end
@@ -359,7 +359,7 @@ import { Tabs } from 'nextra/components'
             return serial
         end
 
-        lib.callback.register('uniq_evidence:HasItem', function(source, item)
+        lib.callback.register('mh_evidence:HasItem', function(source, item)
             if Inv.ox then
                 local count = Inv.exp:GetItemCount(source, item)
 
@@ -473,7 +473,7 @@ import { Tabs } from 'nextra/components'
             end
         end
 
-        lib.callback.register('uniq_evidence:GetEvidenceByType', function(source, typee)
+        lib.callback.register('mh_evidence:GetEvidenceByType', function(source, typee)
             local options = {}
 
             if Inv.ox then
@@ -531,7 +531,7 @@ import { Tabs } from 'nextra/components'
             return options
         end)
 
-        lib.callback.register('uniq_evidence:GetItemMetadata', function(source, type, caseId)
+        lib.callback.register('mh_evidence:GetItemMetadata', function(source, type, caseId)
             if Inv.ox then
                 local items = Inv.exp:GetInventoryItems(source)
 
@@ -587,7 +587,7 @@ import { Tabs } from 'nextra/components'
         end)
 
 
-        RegisterNetEvent('uniq_evidence:addBloodMetadata', function(weapon, target)
+        RegisterNetEvent('mh_evidence:addBloodMetadata', function(weapon, target)
             local name = GetName(target)
             local src = source
 
@@ -603,7 +603,7 @@ import { Tabs } from 'nextra/components'
                             Inv.exp:SetMetadata(src, weapon.slot, weapon.metadata)
 
                             if Config.Notify.blood then
-                                TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.have_blood'), 'warning')
+                                TriggerClientEvent('mh_evidence:Notify', src, L('Notify.have_blood'), 'warning')
                             end
                         end
                     end
@@ -627,7 +627,7 @@ import { Tabs } from 'nextra/components'
                                 Player.Functions.SetPlayerData('items', Player.PlayerData.items)
 
                                 if Config.Notify.blood then
-                                    TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.have_blood'), 'warning')
+                                    TriggerClientEvent('mh_evidence:Notify', src, L('Notify.have_blood'), 'warning')
                                 end
                             end
                         end
@@ -644,7 +644,7 @@ import { Tabs } from 'nextra/components'
                             Inv.exp:SetItemMetadata(src, weapon.slot, weapon.info)
 
                             if Config.Notify.blood then
-                                TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.have_blood'), 'warning')
+                                TriggerClientEvent('mh_evidence:Notify', src, L('Notify.have_blood'), 'warning')
                             end
                         end
                     end
@@ -664,7 +664,7 @@ import { Tabs } from 'nextra/components'
                                 Inv.exp:updateMetadata(inventory, weapon.id, weapon.info)
 
                                 if Config.Notify.blood then
-                                    TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.have_blood'), 'warning')
+                                    TriggerClientEvent('mh_evidence:Notify', src, L('Notify.have_blood'), 'warning')
                                 end
                             end
                         end
@@ -681,7 +681,7 @@ import { Tabs } from 'nextra/components'
                             exports['codem-inventory']:SetItemMetadata(src, weapon.slot, weapon.info)
 
                             if Config.Notify.blood then
-                                TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.have_blood'), 'warning')
+                                TriggerClientEvent('mh_evidence:Notify', src, L('Notify.have_blood'), 'warning')
                             end
                         end
                     end
@@ -690,7 +690,7 @@ import { Tabs } from 'nextra/components'
         end)
 
 
-        RegisterNetEvent('uniq_evidence:server:WeaponFingerprints', function(currentWeapon)
+        RegisterNetEvent('mh_evidence:server:WeaponFingerprints', function(currentWeapon)
             local src = source
             local name = GetName(src)
 
@@ -761,7 +761,7 @@ import { Tabs } from 'nextra/components'
                         Inv.exp:updateMetadata(inventory, item.id, item.info)
 
                         if Config.Notify.printsweapon then
-                            TriggerClientEvent('uniq_evidence:Notify', src, L('Notify.left_fp'), 'warning')
+                            TriggerClientEvent('mh_evidence:Notify', src, L('Notify.left_fp'), 'warning')
                         end
                     end
                 end
