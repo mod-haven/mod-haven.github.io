@@ -1,0 +1,91 @@
+## Server
+
+## isCuffed
+Returns boolean indicating whether the specified player is currently cuffed.
+
+```lua copy
+exports.mh_gang:isCuffed(playerId)
+```
+- playerId: `number`
+
+## GetGang
+Returns a table containing gang information if the specified gang exists, otherwise returns false.
+
+```lua copy
+exports.mh_gang:GetGang(gang)
+```
+- gang: `string`
+
+## isGang
+Returns a boolean indicating if the player belongs to a gang, and a table containing the player's gang data if they do.
+
+```lua copy
+local isGang, data = exports.mh_gang:isGang(playerId)
+
+if isGang then
+    print(json.encode(data, { indent = true }))
+end
+```
+- playerId: `number`
+
+## GetGangLevel
+Returns the current level of the specified gang.
+
+```lua copy
+exports.mh_gang:GetGangLevel(gang)
+```
+- gang: `string`
+
+## GetGangMoney
+Returns the current money balance of the specified gang.
+
+```lua copy
+exports.mh_gang:GetGangMoney(gang)
+```
+- gang: `string`
+
+## AddGangMoney
+Adds the specified amount of money to the gang's balance.
+
+```lua copy
+exports.mh_gang:AddGangMoney(gang, amount)
+```
+- gang: `string`
+- amount: `number`
+
+## RemoveGangMoney
+Removes the specified amount of money from the gang's balance.
+
+```lua copy
+exports.mh_gang:RemoveGangMoney(gang, amount)
+```
+- gang: `string`
+- amount: `number`
+
+## SetGangMoney
+Sets the gang's balance to the specified amount.
+
+```lua copy
+exports.mh_gang:SetGangMoney(gang, amount)
+```
+- gang: `string`
+- amount: `number`
+
+## SetGangLevel
+Sets the gang's level to the specified value.
+
+```lua copy
+exports.mh_gang:SetGangLevel(gang, level)
+```
+- gang: `string`
+- level: `number`
+
+## SetGang
+Assigns a player to the specified gang with the given grade/rank.
+
+```lua copy
+exports.mh_gang:SetGang(playerId, gang, grade)
+```
+- playerId: `number`
+- gang: `string`
+- grade: `number`
